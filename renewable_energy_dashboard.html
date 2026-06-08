@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한국서부발전 신재생에너지 발전량 모니터링 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #050a0e;
+    --bg2: #0a1520;
+    --bg3: #0f1f2e;
+    --card: #0d1a27;
+    --card2: #112233;
+    --accent: #00d4aa;
+    --accent2: #00a8ff;
+    --accent3: #7b61ff;
+    --accent4: #ff6b35;
+    --text: #e8f4f8;
+    --text2: #8baabe;
+    --text3: #4a6a80;
+    --border: rgba(0, 212, 170, 0.15);
+    --border2: rgba(0, 168, 255, 0.2);
+    --glow: rgba(0, 212, 170, 0.08);
+    --red: #ff4d6d;
+    --yellow: #ffd166;
+    --green: #06d6a0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .scan-line {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scan 4s linear infinite;
+    opacity: 0.4;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100vh; }
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 48px;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    padding: 32px 0 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 24px rgba(0, 212, 170, 0.35);
+    flex-shrink: 0;
+    animation: pulse-icon 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-icon {
+    0%, 100% { box-shadow: 0 0 24px rgba(0, 212, 170, 0.35); }
+    50% { box-shadow: 0 0 40px rgba(0, 212, 170, 0.6); }
+  }
+
+  .logo-text h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-text p {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+    letter-spacing: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(6, 214, 160, 0.1);
+    border: 1px solid rgba(6, 214, 160, 0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .current-time {
+    font-size: 13px;
+    color: var(--text2);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ─── CONTROLS ─── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    align-items: center;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .control-label {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+  }
+
+  select, input[type="text"], input[type="number"] {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    outline: none;
+    min-width: 140px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.15);
+  }
+
+  select option { background: #0d1a27; }
+
+  .btn-fetch {
+    background: linear-gradient(135deg, var(--accent), #00b894);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 24px;
+    color: #050a0e;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.2s;
+    box-shadow: 0 0 16px rgba(0, 212, 170, 0.3);
+    align-self: flex-end;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-fetch:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 24px rgba(0, 212, 170, 0.5);
+  }
+
+  .btn-fetch:active { transform: translateY(0); }
+
+  .btn-fetch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ─── STATUS BAR ─── */
+  #status-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text2);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+  }
+
+  .status-icon { font-size: 16px; }
+
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+
+  /* ─── SUMMARY CARDS ─── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent)), transparent);
+  }
+
+  .stat-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--card-accent, var(--accent));
+  }
+
+  .stat-card .icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .stat-card .label {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 6px;
+  }
+
+  .stat-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--card-accent, var(--accent));
+    font-family: 'Space Mono', monospace;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .unit {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* ─── CHART SECTIONS ─── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  .chart-card.wide {
+    grid-column: 1 / -1;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chart-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+
+  .chart-subtitle {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .chart-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── DATA TABLE ─── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .table-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .table-title {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .table-info {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .data-table th {
+    background: var(--bg3);
+    color: var(--text2);
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    font-weight: 400;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(0,212,170,0.05);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .data-table tr:hover td { background: rgba(0,212,170,0.03); }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .energy-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .num-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  /* ─── PAGINATION ─── */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .page-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    transition: all 0.2s;
+  }
+
+  .page-btn:hover, .page-btn.active {
+    background: rgba(0, 168, 255, 0.1);
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ─── EMPTY / ERROR STATES ─── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-msg { font-size: 14px; color: var(--text2); margin-bottom: 8px; }
+  .empty-sub { font-size: 12px; font-family: 'Space Mono', monospace; }
+
+  /* ─── XML VIEWER ─── */
+  .xml-viewer {
+    background: #060d14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    color: #5d8aa8;
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .xml-viewer .xml-tag { color: #00a8ff; }
+  .xml-viewer .xml-attr { color: #7b61ff; }
+  .xml-viewer .xml-val { color: #00d4aa; }
+  .xml-viewer .xml-comment { color: #4a6a80; }
+
+  /* ─── ENERGY TYPE COLORS ─── */
+  .type-solar { --type-c: #ffd166; }
+  .type-wind { --type-c: #00a8ff; }
+  .type-hydro { --type-c: #06d6a0; }
+  .type-bio { --type-c: #7b61ff; }
+  .type-fuel { --type-c: #ff6b35; }
+  .type-geo { --type-c: #ff4d6d; }
+  .type-tidal { --type-c: #00d4aa; }
+  .type-other { --type-c: #8baabe; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    text-align: center;
+    padding: 28px 0 0;
+    border-top: 1px solid var(--border);
+    color: var(--text3);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.5px;
+    line-height: 2;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .charts-grid .chart-card { grid-column: 1; }
+    header { flex-direction: column; }
+    .header-right { align-items: flex-start; }
+  }
+
+  /* ─── LOADING SPINNER ─── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(0,212,170,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ─── NUMBER COUNTER ANIMATION ─── */
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .count-anim { animation: countUp 0.5s ease forwards; }
+
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .api-info-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  .api-tag {
+    background: rgba(123, 97, 255, 0.1);
+    border: 1px solid rgba(123, 97, 255, 0.3);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: #a594ff;
+    letter-spacing: 0.5px;
+  }
+
+  .ratio-bar-wrap { margin-top: 8px; }
+  .ratio-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 4px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .ratio-bar-track {
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .ratio-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  #xml-raw-section { margin-bottom: 24px; }
+
+  .toggle-xml-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 5px 12px;
+    color: var(--text2);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .toggle-xml-btn:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+</style>
+</head>
+<body>
+
+<div class="scan-line"></div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <h1>신재생에너지 발전량 모니터링</h1>
+        <p>KOREA WESTERN POWER · RE GENERATION SYSTEM</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        REAL-TIME DATA
+      </div>
+      <div class="current-time" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- API INFO -->
+  <div class="api-info-row">
+    <span class="api-tag">공공데이터포털</span>
+    <span class="api-tag">B552522 / pg / reGeneration</span>
+    <span class="api-tag">XML RESPONSE</span>
+    <span class="api-tag">한국서부발전</span>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="section-title">조회 설정</div>
+  <div class="controls">
+    <div class="control-group">
+      <span class="control-label">발전 유형</span>
+      <select id="energyType">
+        <option value="">전체</option>
+        <option value="태양광">태양광</option>
+        <option value="풍력">풍력</option>
+        <option value="수력">수력</option>
+        <option value="바이오">바이오</option>
+        <option value="연료전지">연료전지</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <span class="control-label">조회</span>
+      <button class="btn-fetch" id="fetchBtn" onclick="fetchData()">🔍 데이터 조회</button>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="status-bar">
+    <span class="status-icon">📡</span>
+    <span id="status-msg">조회 버튼을 눌러 데이터를 불러오세요.</span>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="section-title">집계 현황</div>
+  <div class="summary-grid" id="summary-grid">
+    <div class="stat-card" style="--card-accent: var(--accent);">
+      <span class="icon">⚡</span>
+      <div class="label">총 발전량</div>
+      <div class="value" id="s-total">--</div>
+      <div class="unit">MWh (합계)</div>
+    </div>
+    <div class="stat-card" style="--card-accent: var(--accent2);">
+      <span class="icon">📋</span>
+      <div class="label">총 데이터 건수</div>
+      <div class="value" id="s-count">--</div>
+      <div class="unit">건 / 페이지</div>
+    </div>
+    <div class="stat-card" style="--card-accent: var(--accent3);">
+      <span class="icon">🌞</span>
+      <div class="label">최대 발전량</div>
+      <div class="value" id="s-max">--</div>
+      <div class="unit">MWh (단일 항목)</div>
+    </div>
+    <div class="stat-card" style="--card-accent: var(--accent4);">
+      <span class="icon">🏭</span>
+      <div class="label">발전소 종류</div>
+      <div class="value" id="s-types">--</div>
+      <div class="unit">가지 에너지원</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-title">데이터 시각화</div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">⚡ 발전 유형별 발전량</div>
+          <div class="chart-subtitle">TYPE · MWh</div>
+        </div>
+        <span class="chart-badge" style="background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);color:var(--accent);">DOUGHNUT</span>
+      </div>
+      <div style="position:relative; height:280px;">
+        <canvas id="chartDoughnut" role="img" aria-label="발전 유형별 발전량 도넛 차트">발전 유형별 발전량 데이터</canvas>
+      </div>
+      <div id="doughnut-legend" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--text2);"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">📊 설비용량 vs 발전량</div>
+          <div class="chart-subtitle">CAPACITY · GENERATION</div>
+        </div>
+        <span class="chart-badge" style="background:rgba(0,168,255,0.1);border:1px solid rgba(0,168,255,0.3);color:var(--accent2);">BAR</span>
+      </div>
+      <div style="position:relative; height:280px;">
+        <canvas id="chartBar" role="img" aria-label="설비용량 대비 발전량 비교 차트">설비용량 대비 발전량 비교 데이터</canvas>
+      </div>
+    </div>
+
+    <div class="chart-card wide">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">📈 항목별 발전량 추이</div>
+          <div class="chart-subtitle">GENERATION TREND · MWh</div>
+        </div>
+        <span class="chart-badge" style="background:rgba(123,97,255,0.1);border:1px solid rgba(123,97,255,0.3);color:var(--accent3);">LINE</span>
+      </div>
+      <div style="position:relative; height:220px;">
+        <canvas id="chartLine" role="img" aria-label="항목별 발전량 추이 라인 차트">발전량 추이 데이터</canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- RAW XML -->
+  <div id="xml-raw-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="section-title" style="margin:0;border:none;padding:0;">원시 XML 응답 데이터</div>
+      <button class="toggle-xml-btn" onclick="toggleXML()" id="toggleXmlBtn">▶ 펼치기</button>
+    </div>
+    <div id="xml-raw-wrap" style="display:none;">
+      <div class="xml-viewer" id="xml-viewer">데이터를 조회하면 XML 원본이 표시됩니다.</div>
+    </div>
+  </div>
+
+  <!-- DATA TABLE -->
+  <div class="table-card">
+    <div class="table-header-bar">
+      <div class="chart-title">📋 상세 데이터 목록</div>
+      <div id="table-info" class="table-info">-- 건</div>
+    </div>
+    <div id="table-body">
+      <div class="empty-state">
+        <div class="empty-icon">🔋</div>
+        <div class="empty-msg">데이터를 불러오지 않았습니다</div>
+        <div class="empty-sub">상단 조회 버튼을 눌러 API 데이터를 조회하세요</div>
+      </div>
+    </div>
+    <div class="pagination" id="pagination" style="display:none;"></div>
+  </div>
+
+  <!-- ENERGY RATIO BREAKDOWN -->
+  <div class="chart-card" id="ratio-section" style="margin-bottom:24px;display:none;">
+    <div class="chart-title" style="margin-bottom:16px;">⚖️ 에너지원별 비율 분석</div>
+    <div id="ratio-bars"></div>
+  </div>
+
+  <footer>
+    <div>⚡ 신재생에너지 발전량 모니터링 시스템 · 한국서부발전 공공데이터 API</div>
+    <div>데이터 출처: 공공데이터포털 (data.go.kr) · B552522/pg/reGeneration</div>
+    <div style="margin-top:6px; color: #2a4a60;">전기전자공학과 학습 프로젝트 · © 2025</div>
+  </footer>
+
+</div>
+
+<script>
+const API_KEY = '4cd267f598e101d45c069b5db3c9f8769e218b9d79a437b1e1fe73b5ca13d396';
+const BASE_URL = 'https://apis.data.go.kr/B552522/pg/reGeneration';
+let currentData = [];
+let charts = {};
+let currentPage = 1;
+const PAGE_SIZE = 20;
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('ko-KR', { hour12: false }) + ' KST';
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Status
+function setStatus(msg, loading=false, isError=false) {
+  const bar = document.getElementById('status-bar');
+  const icon = loading ? '<div class="spinner"></div>' : (isError ? '⚠️' : '✅');
+  bar.innerHTML = `<span class="status-icon">${typeof icon === 'string' ? icon : ''}</span>
+    ${loading ? '<div class="spinner"></div>' : ''}
+    <span id="status-msg"${loading ? ' class="loading-dots"' : ''}>${msg}</span>`;
+}
+
+// Toggle XML
+function toggleXML() {
+  const wrap = document.getElementById('xml-raw-wrap');
+  const btn = document.getElementById('toggleXmlBtn');
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    btn.textContent = '▼ 접기';
+  } else {
+    wrap.style.display = 'none';
+    btn.textContent = '▶ 펼치기';
+  }
+}
+
+// Syntax highlight XML
+function highlightXML(xml) {
+  return xml
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/&lt;(\/?[\w:]+)(?=[^&]*?&gt;)/g, '<span class="xml-tag">&lt;$1</span>')
+    .replace(/(\w+)=(&quot;[^"]*&quot;)/g, '<span class="xml-attr">$1</span>=$2')
+    .replace(/(&lt;\/[\w:]+&gt;)/g,'<span class="xml-tag">$1</span>')
+    .replace(/(&lt;!--[\s\S]*?--&gt;)/g,'<span class="xml-comment">$1</span>');
+}
+
+// Format number
+function fmt(n) {
+  if (n === null || n === undefined || n === '' || isNaN(n)) return '--';
+  return Number(n).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+}
+
+// Energy type config
+function getTypeConfig(name='') {
+  const n = String(name).toLowerCase();
+  if (n.includes('태양') || n.includes('solar')) return { color:'#ffd166', icon:'☀️', label:'태양광' };
+  if (n.includes('풍력') || n.includes('wind')) return { color:'#00a8ff', icon:'💨', label:'풍력' };
+  if (n.includes('수력') || n.includes('hydro')) return { color:'#06d6a0', icon:'💧', label:'수력' };
+  if (n.includes('바이오') || n.includes('bio')) return { color:'#7b61ff', icon:'🌿', label:'바이오' };
+  if (n.includes('연료') || n.includes('fuel')) return { color:'#ff6b35', icon:'⚗️', label:'연료전지' };
+  if (n.includes('지열') || n.includes('geo')) return { color:'#ff4d6d', icon:'🌋', label:'지열' };
+  if (n.includes('조력') || n.includes('tidal') || n.includes('해양')) return { color:'#00d4aa', icon:'🌊', label:'해양' };
+  return { color:'#8baabe', icon:'⚡', label: name || '기타' };
+}
+
+// Parse XML
+function parseXML(xmlStr) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlStr, 'text/xml');
+  const items = doc.querySelectorAll('item');
+  const totalCount = doc.querySelector('totalCount');
+  const resultCode = doc.querySelector('resultCode');
+  const resultMsg = doc.querySelector('resultMsg');
+
+  return {
+    resultCode: resultCode?.textContent || '',
+    resultMsg: resultMsg?.textContent || '',
+    totalCount: parseInt(totalCount?.textContent || '0'),
+    items: Array.from(items).map(item => {
+      const get = tag => item.querySelector(tag)?.textContent?.trim() || '';
+      // Try common field names for this API
+      return {
+        num: get('num') || get('rnum') || get('sn'),
+        plantName: get('instlPlcNm') || get('plntNm') || get('plantName') || get('siteName') || get('stnNm'),
+        energyType: get('enrgyRscGbnNm') || get('energyType') || get('newrEnrnGbnNm') || get('rscGbn'),
+        capacity: get('instlCapacity') || get('capacity') || get('instCap'),
+        generation: get('genQnt') || get('generation') || get('genrQnt') || get('powerQnt'),
+        year: get('bsYr') || get('year') || get('basisYear'),
+        month: get('bsMm') || get('month') || get('basisMonth'),
+        location: get('stnAdr') || get('location') || get('address'),
+        raw: item.innerHTML
+      };
+    })
+  };
+}
+
+// Destroy chart safely
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// Render doughnut
+function renderDoughnut(data) {
+  destroyChart('doughnut');
+  const typeMap = {};
+  data.forEach(d => {
+    const t = d.energyType || '기타';
+    const v = parseFloat(d.generation) || 0;
+    typeMap[t] = (typeMap[t] || 0) + v;
+  });
+  const labels = Object.keys(typeMap);
+  const values = Object.values(typeMap);
+  const colors = labels.map(l => getTypeConfig(l).color);
+  const total = values.reduce((a,b) => a+b, 0);
+
+  const legend = document.getElementById('doughnut-legend');
+  legend.innerHTML = labels.map((l, i) =>
+    `<span style="display:flex;align-items:center;gap:4px;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex-shrink:0;"></span>
+      <span>${getTypeConfig(l).icon} ${l} ${total > 0 ? Math.round(values[i]/total*100) : 0}%</span>
+    </span>`
+  ).join('');
+
+  const ctx = document.getElementById('chartDoughnut').getContext('2d');
+  charts.doughnut = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors.map(c => c + 'cc'),
+        borderColor: colors,
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      cutout: '65%'
+    }
+  });
+}
+
+// Render bar
+function renderBar(data) {
+  destroyChart('bar');
+  const limited = data.slice(0, 12);
+  const labels = limited.map((d, i) => d.plantName ? (d.plantName.length > 8 ? d.plantName.slice(0,8)+'…' : d.plantName) : `항목 ${i+1}`);
+  const gen = limited.map(d => parseFloat(d.generation) || 0);
+  const cap = limited.map(d => parseFloat(d.capacity) || 0);
+
+  const ctx = document.getElementById('chartBar').getContext('2d');
+  charts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '발전량(MWh)',
+          data: gen,
+          backgroundColor: 'rgba(0,212,170,0.7)',
+          borderColor: '#00d4aa',
+          borderWidth: 1
+        },
+        {
+          label: '설비용량(kW)',
+          data: cap,
+          backgroundColor: 'rgba(0,168,255,0.5)',
+          borderColor: '#00a8ff',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8baabe', font: { size: 10 }, maxRotation: 45, autoSkip: false },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        },
+        y: {
+          ticks: { color: '#8baabe', font: { size: 10 } },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+// Render line
+function renderLine(data) {
+  destroyChart('line');
+  const limited = data.slice(0, 20);
+  const labels = limited.map((d, i) => {
+    if (d.year && d.month) return `${d.year}-${String(d.month).padStart(2,'0')}`;
+    return `#${i+1}`;
+  });
+  const gen = limited.map(d => parseFloat(d.generation) || 0);
+
+  const ctx = document.getElementById('chartLine').getContext('2d');
+  charts.line = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '발전량(MWh)',
+        data: gen,
+        borderColor: '#7b61ff',
+        backgroundColor: 'rgba(123,97,255,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#7b61ff',
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8baabe', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8baabe', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// Render ratio bars
+function renderRatioBars(data) {
+  const typeMap = {};
+  data.forEach(d => {
+    const t = d.energyType || '기타';
+    const v = parseFloat(d.generation) || 0;
+    typeMap[t] = (typeMap[t] || 0) + v;
+  });
+  const total = Object.values(typeMap).reduce((a,b) => a+b, 0);
+  const sorted = Object.entries(typeMap).sort((a,b) => b[1]-a[1]);
+
+  const sec = document.getElementById('ratio-section');
+  const container = document.getElementById('ratio-bars');
+  if (sorted.length === 0) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+
+  container.innerHTML = sorted.map(([name, val]) => {
+    const cfg = getTypeConfig(name);
+    const pct = total > 0 ? (val/total*100).toFixed(1) : 0;
+    return `<div class="ratio-bar-wrap">
+      <div class="ratio-bar-label">
+        <span>${cfg.icon} ${name}</span>
+        <span style="color:${cfg.color}">${fmt(val)} MWh &nbsp; ${pct}%</span>
+      </div>
+      <div class="ratio-bar-track">
+        <div class="ratio-bar-fill" style="width:${pct}%;background:${cfg.color};"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Render table
+function renderTable(data, page=1) {
+  const start = (page-1)*PAGE_SIZE;
+  const slice = data.slice(start, start+PAGE_SIZE);
+  const tableBody = document.getElementById('table-body');
+  document.getElementById('table-info').textContent = `총 ${data.length}건`;
+
+  if (slice.length === 0) {
+    tableBody.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-msg">표시할 데이터가 없습니다</div>
+    </div>`;
+    return;
+  }
+
+  // Determine which columns have data
+  const hasCap = slice.some(d => d.capacity && d.capacity !== '');
+  const hasYear = slice.some(d => d.year && d.year !== '');
+  const hasMonth = slice.some(d => d.month && d.month !== '');
+  const hasLoc = slice.some(d => d.location && d.location !== '');
+
+  let html = `<div style="overflow-x:auto;"><table class="data-table">
+    <thead><tr>
+      <th>발전소명</th>
+      <th>에너지 유형</th>
+      ${hasCap ? '<th>설비용량 (kW)</th>' : ''}
+      <th>발전량 (MWh)</th>
+      ${hasYear ? '<th>연도</th>' : ''}
+      ${hasMonth ? '<th>월</th>' : ''}
+      ${hasLoc ? '<th>위치</th>' : ''}
+    </tr></thead><tbody>`;
+
+  slice.forEach((d, i) => {
+    const cfg = getTypeConfig(d.energyType);
+    html += `<tr>
+      <td style="font-weight:500;">${d.plantName || '(미상)'}</td>
+      <td>
+        <span class="energy-type-badge" style="background:${cfg.color}18;border:1px solid ${cfg.color}44;color:${cfg.color};">
+          ${cfg.icon} ${d.energyType || '기타'}
+        </span>
+      </td>
+      ${hasCap ? `<td class="num-value">${fmt(d.capacity)}</td>` : ''}
+      <td class="num-value">${fmt(d.generation)}</td>
+      ${hasYear ? `<td style="color:var(--text2);">${d.year||'--'}</td>` : ''}
+      ${hasMonth ? `<td style="color:var(--text2);">${d.month||'--'}</td>` : ''}
+      ${hasLoc ? `<td style="color:var(--text2);font-size:12px;">${d.location||'--'}</td>` : ''}
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  tableBody.innerHTML = html;
+
+  // Pagination hidden
+  const pag = document.getElementById('pagination');
+  pag.style.display = 'none';
+}
+
+function goPage(p) {
+  currentPage = p;
+  renderTable(currentData, p);
+}
+
+// Update summary
+function updateSummary(data) {
+  const gen = data.map(d => parseFloat(d.generation) || 0);
+  const total = gen.reduce((a,b) => a+b, 0);
+  const max = Math.max(...gen, 0);
+  const types = new Set(data.map(d => d.energyType).filter(Boolean));
+
+  const anim = (id, val) => {
+    const el = document.getElementById(id);
+    el.classList.remove('count-anim');
+    void el.offsetWidth;
+    el.classList.add('count-anim');
+    el.textContent = val;
+  };
+
+  setTimeout(() => {
+    anim('s-total', fmt(total.toFixed(0)));
+    anim('s-count', data.length.toLocaleString());
+    anim('s-max', fmt(max.toFixed(0)));
+    anim('s-types', types.size || '--');
+  }, 100);
+}
+
+// MAIN FETCH
+async function fetchData() {
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+
+  const pageNo = 1;
+  const numOfRows = 100;
+  const typeFilter = document.getElementById('energyType').value;
+
+  const url = `${BASE_URL}?serviceKey=${API_KEY}&pageNo=${pageNo}&numOfRows=${numOfRows}&type=xml`;
+  const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+
+  setStatus('API 서버에 연결 중', true);
+
+  try {
+    const response = await fetch(proxiedUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const xmlText = await response.text();
+
+    // Show raw XML
+    document.getElementById('xml-viewer').innerHTML = highlightXML(
+      xmlText.length > 3000 ? xmlText.slice(0,3000) + '\n\n... (생략됨)' : xmlText
+    );
+
+    const parsed = parseXML(xmlText);
+
+    if (parsed.resultCode && parsed.resultCode !== '00' && parsed.resultCode !== '0000') {
+      throw new Error(`API 오류 [${parsed.resultCode}]: ${parsed.resultMsg}`);
+    }
+
+    let items = parsed.items;
+
+    // If no structured items found, try to parse raw fields
+    if (items.length === 0) {
+      setStatus(`⚠️ 데이터 항목이 없습니다. XML 원본을 확인하세요.`, false, true);
+      renderTable([], 1);
+      return;
+    }
+
+    // Filter
+    if (typeFilter) {
+      items = items.filter(d => d.energyType && d.energyType.includes(typeFilter));
+    }
+
+    currentData = items;
+    currentPage = 1;
+
+    updateSummary(items);
+    renderDoughnut(items);
+    renderBar(items);
+    renderLine(items);
+    renderRatioBars(items);
+    renderTable(items, 1);
+
+    setStatus(`✅ 총 ${items.length}건 로드 완료 · 전체 ${parsed.totalCount}건 · 페이지 ${pageNo}`);
+
+  } catch (err) {
+    console.error(err);
+
+    // CORS fallback: generate demo data
+    if (err.message.includes('Failed to fetch') || err.message.includes('CORS') || err.message.includes('NetworkError')) {
+      setStatus('⚠️ CORS 제한: 브라우저에서 직접 API 접근 불가. 샘플 데이터로 표시합니다. 실제 서비스는 서버 프록시 사용 권장.', false, true);
+      loadDemoData();
+    } else {
+      setStatus(`❌ 오류: ${err.message}`, false, true);
+
+      // Still try to show something with demo data
+      setTimeout(() => {
+        setStatus(`⚠️ API 오류 발생. 데모 데이터로 시각화를 표시합니다. (오류: ${err.message})`, false, true);
+        loadDemoData();
+      }, 500);
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function loadDemoData() {
+  const plants = [
+    { plantName: '태안 태양광 1호', energyType: '태양광', capacity: '3000', generation: '4521.3', year: '2024', month: '6', location: '충남 태안' },
+    { plantName: '새만금 풍력 단지', energyType: '풍력', capacity: '15000', generation: '18320.0', year: '2024', month: '6', location: '전북 군산' },
+    { plantName: '서인천 연료전지', energyType: '연료전지', capacity: '20000', generation: '14100.5', year: '2024', month: '6', location: '인천 서구' },
+    { plantName: '평택 바이오가스', energyType: '바이오', capacity: '5000', generation: '3600.2', year: '2024', month: '6', location: '경기 평택' },
+    { plantName: '군산 수력발전소', energyType: '수력', capacity: '2500', generation: '2100.8', year: '2024', month: '6', location: '전북 군산' },
+    { plantName: '태안 태양광 2호', energyType: '태양광', capacity: '4500', generation: '6700.1', year: '2024', month: '5', location: '충남 태안' },
+    { plantName: '서해 해상풍력', energyType: '풍력', capacity: '30000', generation: '32500.0', year: '2024', month: '5', location: '충남 보령' },
+    { plantName: '인천 LNG 연료전지', energyType: '연료전지', capacity: '12000', generation: '10200.4', year: '2024', month: '5', location: '인천 동구' },
+    { plantName: '익산 바이오매스', energyType: '바이오', capacity: '8000', generation: '5900.7', year: '2024', month: '5', location: '전북 익산' },
+    { plantName: '화순 소수력', energyType: '수력', capacity: '1200', generation: '900.3', year: '2024', month: '4', location: '전남 화순' },
+    { plantName: '보령 태양광', energyType: '태양광', capacity: '6000', generation: '8100.9', year: '2024', month: '4', location: '충남 보령' },
+    { plantName: '군산 풍력 A', energyType: '풍력', capacity: '10000', generation: '11200.6', year: '2024', month: '4', location: '전북 군산' },
+    { plantName: '당진 연료전지', energyType: '연료전지', capacity: '9000', generation: '8000.2', year: '2024', month: '3', location: '충남 당진' },
+    { plantName: '순천 바이오발전', energyType: '바이오', capacity: '3500', generation: '2800.1', year: '2024', month: '3', location: '전남 순천' },
+    { plantName: '군산 수력 2', energyType: '수력', capacity: '1800', generation: '1500.5', year: '2024', month: '3', location: '전북 군산' },
+    { plantName: '서산 태양광 단지', energyType: '태양광', capacity: '7500', generation: '9800.4', year: '2024', month: '2', location: '충남 서산' },
+    { plantName: '태안 해상풍력', energyType: '풍력', capacity: '25000', generation: '27000.0', year: '2024', month: '2', location: '충남 태안' },
+    { plantName: '평택 연료전지 2', energyType: '연료전지', capacity: '15000', generation: '13500.8', year: '2024', month: '2', location: '경기 평택' },
+    { plantName: '전주 바이오', energyType: '바이오', capacity: '4200', generation: '3100.3', year: '2024', month: '1', location: '전북 전주' },
+    { plantName: '진안 수력', energyType: '수력', capacity: '900', generation: '700.6', year: '2024', month: '1', location: '전북 진안' },
+  ];
+
+  // Generate fake XML
+  const xmlDemo = `<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <header>
+    <resultCode>00</resultCode>
+    <resultMsg>NORMAL SERVICE</resultMsg>
+  </header>
+  <body>
+    <totalCount>${plants.length}</totalCount>
+    <numOfRows>20</numOfRows>
+    <pageNo>1</pageNo>
+    <items>
+      ${plants.slice(0,3).map(p => `<item>
+        <instlPlcNm>${p.plantName}</instlPlcNm>
+        <enrgyRscGbnNm>${p.energyType}</enrgyRscGbnNm>
+        <instlCapacity>${p.capacity}</instlCapacity>
+        <genQnt>${p.generation}</genQnt>
+        <bsYr>${p.year}</bsYr>
+        <bsMm>${p.month}</bsMm>
+        <stnAdr>${p.location}</stnAdr>
+      </item>`).join('\n      ')}
+      ... (${plants.length - 3}건 더)
+    </items>
+  </body>
+</response>`;
+
+  document.getElementById('xml-viewer').innerHTML = highlightXML(xmlDemo);
+
+  currentData = plants;
+  currentPage = 1;
+
+  updateSummary(plants);
+  renderDoughnut(plants);
+  renderBar(plants);
+  renderLine(plants);
+  renderRatioBars(plants);
+  renderTable(plants, 1);
+}
+
+// Auto-load on start with a brief delay
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    setStatus('준비 완료. 조회 버튼을 눌러 실시간 API 데이터를 불러오세요.');
+  }, 300);
+});
+</script>
+</body>
+</html>
